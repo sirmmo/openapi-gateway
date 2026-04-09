@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  gateway-public:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - GATEWAY_NAMESPACE=public
+      - GATEWAY_AUTH_JWKS_URL=${JWKS_URL}
+      - GATEWAY_AUTH_REQUIRED=${AUTH_REQUIRED:-true}
+      - GATEWAY_AUTH_MODE=${AUTH_MODE:-relay}
+      - GATEWAY_AUTH_JWKS_TTL_SECONDS=${JWKS_TTL:-300}
+      - GATEWAY_AUTH_CLAIM_ID=${CLAIM_ID:-sub}
+      - GATEWAY_AUTH_CLAIM_EMAIL=${CLAIM_EMAIL:-email}
+      - GATEWAY_AUTH_CLAIM_ROLES=${CLAIM_ROLES:-roles}
+      - GATEWAY_ADMIN_SECRET=${ADMIN_SECRET}
+      - GATEWAY_DOCS_DEFAULT=/openapi.json
+      - GATEWAY_CONFIG_PATH=/config/public-services.json
+    volumes:
+      - ./config:/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - gateway_net
+    labels:
+      gateway.public.enable: "false"
+
+  # Uncomment to run a second gateway instance for internal traffic
+  # gateway-internal:
+  #   build: .
+  #   ports:
+  #     - "8001:8000"
+  #   environment:
+  #     - GATEWAY_NAMESPACE=internal
+  #     - GATEWAY_AUTH_REQUIRED=false
+  #     - GATEWAY_ADMIN_SECRET=${ADMIN_SECRET}
+  #     - GATEWAY_CONFIG_PATH=/config/internal-services.json
+  #   volumes:
+  #     - ./config:/config
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #   networks:
+  #     - gateway_net
+  #   labels:
+  #     gateway.internal.enable: "false"
+
+networks:
+  gateway_net:
+    driver: bridge

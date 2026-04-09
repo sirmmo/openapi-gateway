@@ -1,0 +1,15 @@
+{
+  "services": [
+    {
+      "name": "legacy-crm",
+      "host": "crm.internal",
+      "port": 8080,
+      "docs_path": "/api/openapi.json",
+      "prefix": "/crm",
+      "auth_required": false,
+      "exclude": {
+        "paths": ["/admin/*", "/internal/*"]
+      }
+    }
+  ]
+}
