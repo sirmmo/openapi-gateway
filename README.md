@@ -1,8 +1,9 @@
 # openapi-gateway
 
+[![CI](https://github.com/sirmmo/openapi-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/sirmmo/openapi-gateway/actions/workflows/ci.yml)
+[![Image](https://ghcr-badge.egpl.dev/sirmmo/openapi-gateway/latest_tag?label=ghcr.io)](https://github.com/sirmmo/openapi-gateway/pkgs/container/openapi-gateway)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
-[![Docker](https://img.shields.io/badge/docker-required-blue?logo=docker&logoColor=white)](https://www.docker.com/)
 
 A lightweight, self-configuring API gateway that discovers services via Docker events, introspects their OpenAPI specs, and proxies requests — with per-service filtering, prefix routing, pluggable authentication, and multi-gateway namespace support.
 
@@ -38,11 +39,12 @@ A lightweight, self-configuring API gateway that discovers services via Docker e
 ## Quickstart
 
 ```bash
-git clone https://github.com/your-org/openapi-gateway
-cd openapi-gateway
+curl -O https://raw.githubusercontent.com/sirmmo/openapi-gateway/main/docker-compose.yml
 cp .env.example .env   # set JWKS_URL, ADMIN_SECRET, etc.
 docker compose up -d
 ```
+
+The `docker-compose.yml` pulls `ghcr.io/sirmmo/openapi-gateway:latest` directly — no build step needed.
 
 Your gateway is now listening on `http://localhost:8000`.
 
@@ -102,7 +104,7 @@ When `GATEWAY_NAMESPACE` is absent, the gateway reads only `gateway.*` labels (l
 ```yaml
 services:
   gateway-public:
-    build: .
+    image: ghcr.io/sirmmo/openapi-gateway:latest
     ports:
       - "8000:8000"
     environment:
@@ -117,7 +119,7 @@ services:
       - gateway_net
 
   gateway-internal:
-    build: .
+    image: ghcr.io/sirmmo/openapi-gateway:latest
     ports:
       - "8001:8000"
     environment:
