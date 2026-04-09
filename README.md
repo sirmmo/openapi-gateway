@@ -367,6 +367,7 @@ Resolve the configuration error and restart the affected container — the gatew
 | `GATEWAY_DOCKER_SOCKET` | `unix://var/run/docker.sock` | Docker socket path |
 | `GATEWAY_DISCOVERY_RETRY_ATTEMPTS` | `5` | OpenAPI fetch retry count |
 | `GATEWAY_DISCOVERY_RETRY_BACKOFF` | `2.0` | Exponential backoff base (seconds) |
+| `GATEWAY_LOG_LEVEL` | `INFO` | Log verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 
 <details>
 <summary>JWKS URLs for common identity providers</summary>

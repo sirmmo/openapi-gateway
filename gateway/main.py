@@ -1,12 +1,18 @@
 from fastapi import FastAPI, Request
 from contextlib import asynccontextmanager
 import asyncio
+import logging
 
 from gateway.discovery.docker_watcher import watch_docker_events
 from gateway.discovery.manual_loader import load_manual_config
 from gateway.proxy.forwarder import forward_request
 from gateway.api.admin import router as admin_router
 from gateway.settings import settings
+
+logging.basicConfig(
+    level=settings.log_level.upper(),
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 
 @asynccontextmanager

@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     # Admin
     admin_secret: Optional[str] = None
 
+    # Logging
+    log_level: str = "INFO"
+
     # Discovery
     docs_default: str = "/openapi.json"
     config_path: str = "/config/services.json"
