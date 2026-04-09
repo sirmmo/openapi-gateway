@@ -1,12 +1,18 @@
 import httpx
 import asyncio
 import logging
+import re
 from gateway.settings import settings
 from gateway.registry.route_registry import registry
 from gateway.registry.filter import parse_labels, FilterMode, apply_filter
 import gateway.labels as lbl
 
 logger = logging.getLogger(__name__)
+
+
+def _path_to_glob(path: str) -> str:
+    """Convert OpenAPI path params like {id} to fnmatch wildcards."""
+    return re.sub(r'\{[^}]+\}', '*', path)
 
 
 def _resolve_service_name(labels: dict, container) -> str:
@@ -41,9 +47,10 @@ def _extract_routes(spec: dict, base_url: str, prefix: str | None, filter_spec) 
         for method, operation in methods.items():
             if method.upper() not in {"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"}:
                 continue
+            raw_exposed = f"{prefix}{path}" if prefix else path
             route = {
                 "path": path,
-                "exposed_path": f"{prefix}{path}" if prefix else path,
+                "exposed_path": _path_to_glob(raw_exposed),
                 "method": method.upper(),
                 "operationId": operation.get("operationId", ""),
                 "tags": operation.get("tags", []),

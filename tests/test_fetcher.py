@@ -10,6 +10,7 @@ from gateway.discovery.openapi_fetcher import (
     _resolve_base_url,
     _resolve_prefix,
     _extract_routes,
+    _path_to_glob,
     fetch_and_register,
 )
 
@@ -30,6 +31,20 @@ SIMPLE_SPEC = {
 @pytest.fixture(autouse=True)
 def no_namespace(monkeypatch):
     monkeypatch.setattr(settings, "namespace", None)
+
+
+class TestPathToGlob:
+    def test_single_param(self):
+        assert _path_to_glob("/users/{id}") == "/users/*"
+
+    def test_multiple_params(self):
+        assert _path_to_glob("/orgs/{org}/repos/{repo}") == "/orgs/*/repos/*"
+
+    def test_no_params_unchanged(self):
+        assert _path_to_glob("/health") == "/health"
+
+    def test_prefix_preserved(self):
+        assert _path_to_glob("/api/v1/users/{id}") == "/api/v1/users/*"
 
 
 class TestResolveServiceName:

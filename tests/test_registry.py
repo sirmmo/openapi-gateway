@@ -42,6 +42,14 @@ class TestRegisterAndResolve:
         reg.register("svc-1", [make_route("/users", "GET", prefix="/api")], {}, "svc")
         assert reg.resolve("/api/users", "GET") is not None
 
+    def test_resolves_wildcard_path_param(self, reg):
+        # exposed_path uses * (converted from {id} by _path_to_glob in fetcher)
+        route = make_route("/users/*", "GET")
+        route["path"] = "/users/{id}"
+        reg.register("svc-1", [route], {}, "svc")
+        assert reg.resolve("/users/123", "GET") is not None
+        assert reg.resolve("/users/abc", "GET") is not None
+
     def test_returns_labels_with_route(self, reg):
         labels = {"gateway.enable": "true"}
         reg.register("svc-1", [make_route("/health")], labels, "svc")

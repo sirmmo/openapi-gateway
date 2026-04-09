@@ -1,8 +1,18 @@
+import logging
 import httpx
 from fastapi import Request, Response
 from gateway.registry.route_registry import registry
 from gateway.auth.middleware import check_auth, inject_claims_headers
 from gateway.settings import settings
+
+logger = logging.getLogger(__name__)
+
+# Headers that must not be forwarded to upstream
+_HOP_BY_HOP = frozenset({
+    "connection", "keep-alive", "transfer-encoding", "te",
+    "trailers", "upgrade", "proxy-authorization", "proxy-authenticate",
+    "content-length",  # let httpx set this from the actual body
+})
 
 
 def _strip_prefix(path: str, prefix: str) -> str:
@@ -21,7 +31,7 @@ async def forward_request(request: Request, path: str) -> Response:
     route, labels, service_name = result
     claims = await check_auth(request, route, labels)
 
-    headers = dict(request.headers)
+    headers = {k: v for k, v in request.headers.items() if k.lower() not in _HOP_BY_HOP}
     headers.pop("host", None)
 
     prefix = route.get("prefix")
@@ -37,15 +47,22 @@ async def forward_request(request: Request, path: str) -> Response:
     target_url = f"{route['base_url']}{upstream_path}"
     body = await request.body()
 
-    async with httpx.AsyncClient() as client:
-        upstream = await client.request(
-            method=request.method,
-            url=target_url,
-            headers=headers,
-            content=body,
-            params=request.query_params,
-            timeout=30.0,
-        )
+    try:
+        async with httpx.AsyncClient() as client:
+            upstream = await client.request(
+                method=request.method,
+                url=target_url,
+                headers=headers,
+                content=body,
+                params=request.query_params,
+                timeout=30.0,
+            )
+    except httpx.TimeoutException:
+        logger.warning(f"Upstream timeout: {request.method} {target_url}")
+        return Response(content="Gateway Timeout", status_code=504)
+    except httpx.RequestError as e:
+        logger.warning(f"Upstream connection error: {e}")
+        return Response(content="Bad Gateway", status_code=502)
 
     return Response(
         content=upstream.content,

@@ -32,13 +32,13 @@ async def watch_docker_events():
                     fetch_and_register(container.id, container.labels, container)
                 )
 
-            await loop.run_in_executor(None, _blocking_watch, client)
+            await loop.run_in_executor(None, _blocking_watch, client, loop)
         except Exception as e:
             logger.warning(f"Docker watcher error: {e}. Reconnecting in 5s...")
             await asyncio.sleep(5)
 
 
-def _blocking_watch(client):
+def _blocking_watch(client, loop):
     for event in client.events(decode=True, filters={"type": "container"}):
         action = event.get("Action", "")
         if action not in RELEVANT_EVENTS:
@@ -56,7 +56,9 @@ def _blocking_watch(client):
             continue
 
         if action in {"start", "update"}:
-            asyncio.run(fetch_and_register(container_id, labels, container))
+            asyncio.run_coroutine_threadsafe(
+                fetch_and_register(container_id, labels, container), loop
+            )
         elif action in {"die", "stop"}:
             registry.deregister(container_id)
             logger.info(f"Deregistered service: {container_id[:12]}")
