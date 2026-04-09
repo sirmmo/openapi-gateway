@@ -13,7 +13,18 @@ pip install -e .
 uvicorn gateway.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-There are no automated tests in this repository yet.
+## Running tests
+
+```bash
+pip install -e ".[test]"
+pytest
+
+# Single file
+pytest tests/test_labels.py
+
+# Single test
+pytest tests/test_labels.py::TestIsEnabled::test_namespaced_enable_no_fallback
+```
 
 ## Architecture
 
