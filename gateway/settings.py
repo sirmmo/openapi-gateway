@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     # Auth
     auth_jwks_url: Optional[str] = None
     auth_required: bool = True
-    auth_mode: str = "relay"                  # relay | validate
+    auth_mode: str = "validate"               # relay | validate
     auth_jwks_ttl_seconds: int = 300
 
     # Claims relay (mode=validate)
