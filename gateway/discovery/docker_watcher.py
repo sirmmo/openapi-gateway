@@ -12,7 +12,9 @@ RELEVANT_EVENTS = {"start", "die", "stop", "update"}
 
 
 async def watch_docker_events():
-    client = docker.DockerClient(base_url=settings.docker_socket)
+    # timeout=None: the event stream is long-lived; the default 60s read
+    # timeout causes ReadTimeout errors when the Docker host is quiet.
+    client = docker.DockerClient(base_url=settings.docker_socket, timeout=None)
     logger.info(f"Docker event watcher started (namespace: {settings.namespace or 'none'})")
 
     # Boot scan: registra container già running
@@ -23,7 +25,12 @@ async def watch_docker_events():
             )
 
     loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, _blocking_watch, client)
+    while True:
+        try:
+            await loop.run_in_executor(None, _blocking_watch, client)
+        except Exception as e:
+            logger.warning(f"Docker event stream interrupted: {e}. Reconnecting in 5s...")
+            await asyncio.sleep(5)
 
 
 def _blocking_watch(client):
