@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     docs_default: str = "/openapi.json"
     config_path: str = "/config/services.json"
     docker_socket: str = "unix://var/run/docker.sock"
+    docker_networks: Optional[str] = None   # comma-separated network names; auto-detected if unset
     discovery_retry_attempts: int = 5
     discovery_retry_backoff: float = 2.0
 

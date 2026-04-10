@@ -324,6 +324,7 @@ If `GATEWAY_ADMIN_SECRET` is not set, all admin endpoints return `503`.
 | `GET` | `/_gateway/status` | Service registry status |
 | `GET` | `/_gateway/routes` | All registered routes |
 | `POST` | `/_gateway/reload` | Reload `services.json` |
+| `POST` | `/_gateway/rediscover` | Re-scan Docker containers and Swarm services |
 
 <details>
 <summary>Example status response</summary>
@@ -390,6 +391,7 @@ Resolve the configuration error and restart the affected container — the gatew
 | `GATEWAY_DOCS_DEFAULT` | `/openapi.json` | Default OpenAPI schema path |
 | `GATEWAY_CONFIG_PATH` | `/config/services.json` | Path to manual service registry |
 | `GATEWAY_DOCKER_SOCKET` | `unix://var/run/docker.sock` | Docker socket path |
+| `GATEWAY_DOCKER_NETWORKS` | auto-detected | Comma-separated network names to watch. If unset, detected from the gateway container's own networks. |
 | `GATEWAY_DISCOVERY_RETRY_ATTEMPTS` | `5` | OpenAPI fetch retry count |
 | `GATEWAY_DISCOVERY_RETRY_BACKOFF` | `2.0` | Exponential backoff base (seconds) |
 | `GATEWAY_LOG_LEVEL` | `INFO` | Log verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |

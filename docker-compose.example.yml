@@ -12,28 +12,6 @@ version: "3.9"
 
 services:
 
-  # ── Gateway ────────────────────────────────────────────────────────────────
-  gateway:
-    image: ghcr.io/sirmmo/openapi-gateway:latest
-    ports:
-      - "8000:8000"
-    environment:
-      - GATEWAY_NAMESPACE=public
-      - GATEWAY_AUTH_REQUIRED=${AUTH_REQUIRED:-true}
-      - GATEWAY_AUTH_JWKS_URL=${JWKS_URL}
-      - GATEWAY_AUTH_MODE=${AUTH_MODE:-validate}
-      - GATEWAY_ADMIN_SECRET=${ADMIN_SECRET}
-      - GATEWAY_LOG_LEVEL=${LOG_LEVEL:-INFO}
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - gateway_net
-    # Prevent the gateway from discovering itself.
-    labels:
-      gateway.public.enable: "false"
-    depends_on:
-      - petstore
-      - httpbin
 
   # ── Sample service 1: Swagger Petstore (OpenAPI 3.0) ───────────────────────
   #
@@ -46,7 +24,7 @@ services:
   petstore:
     image: swaggerapi/petstore3:unstable
     networks:
-      - gateway_net
+      - test-gateway
     labels:
       # Register on the public gateway only.
       gateway.public.enable: "true"
@@ -75,7 +53,7 @@ services:
   httpbin:
     image: kennethreitz/httpbin
     networks:
-      - gateway_net
+      - test-gateway
     labels:
       # ── Public gateway ──────────────────────────────────────────────────
       gateway.public.enable: "true"
@@ -98,5 +76,5 @@ services:
       gateway.docs: "/spec.json"
 
 networks:
-  gateway_net:
-    driver: bridge
+  test-gateway:
+    external: true

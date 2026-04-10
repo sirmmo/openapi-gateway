@@ -108,10 +108,10 @@ class RouteRegistry:
             }
 
     def service_specs(self) -> list[tuple]:
-        """Return (service_name, raw_spec, routes) for every healthy, registered service."""
+        """Return (service_name, raw_spec, routes, labels) for every healthy, registered service."""
         with self._lock:
             return [
-                (entry.service_name, entry.raw_spec, entry.routes)
+                (entry.service_name, entry.raw_spec, entry.routes, entry.labels)
                 for entry in self._store.values()
                 if not entry.error and entry.raw_spec
             ]

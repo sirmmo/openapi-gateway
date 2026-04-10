@@ -5,11 +5,18 @@ from fastapi.responses import HTMLResponse
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 
 from gateway.registry.route_registry import registry
+from gateway.auth.middleware import _requires_auth
 from gateway.settings import settings
 
 router = APIRouter()
 
 _HTTP_METHODS = {"get", "post", "put", "patch", "delete", "options", "head"}
+
+_BEARER_SCHEME = {
+    "type": "http",
+    "scheme": "bearer",
+    "bearerFormat": "JWT",
+}
 
 
 def _safe_prefix(name: str) -> str:
@@ -32,6 +39,7 @@ def _rewrite_refs(obj, prefix: str):
 def build_merged_spec() -> dict:
     ns = settings.namespace
     title = f"OpenAPI Gateway{' [' + ns + ']' if ns else ''}"
+    auth_enabled = settings.auth_required
 
     merged: dict = {
         "openapi": "3.1.0",
@@ -40,12 +48,15 @@ def build_merged_spec() -> dict:
         "components": {"schemas": {}},
     }
 
-    for service_name, raw_spec, routes in registry.service_specs():
-        prefix = _safe_prefix(service_name)
+    if auth_enabled:
+        merged["components"]["securitySchemes"] = {"bearerAuth": _BEARER_SCHEME}
+
+    for service_name, raw_spec, routes, labels in registry.service_specs():
+        schema_prefix = _safe_prefix(service_name)
 
         # Deep-copy and rewrite all $ref strings so schemas from different
         # services never collide in the merged components section.
-        spec = _rewrite_refs(copy.deepcopy(raw_spec), prefix)
+        spec = _rewrite_refs(copy.deepcopy(raw_spec), schema_prefix)
 
         spec_paths = spec.get("paths", {})
 
@@ -66,14 +77,26 @@ def build_merged_spec() -> dict:
                 path_level = {k: v for k, v in path_item.items() if k not in _HTTP_METHODS}
                 merged["paths"][exposed_path] = path_level
 
-            merged["paths"][exposed_path][method] = path_item[method]
+            operation = path_item[method]
+
+            # Annotate each operation with the actual security requirement so
+            # Swagger UI shows the lock icon and allows token entry for testing.
+            if auth_enabled:
+                if _requires_auth(route, labels):
+                    operation["security"] = [{"bearerAuth": []}]
+                else:
+                    operation["security"] = []  # explicitly open (override path)
+
+            merged["paths"][exposed_path][method] = operation
 
         # Merge schemas under a service-namespaced key.
         for name, schema in spec.get("components", {}).get("schemas", {}).items():
             merged["components"]["schemas"][name] = schema
 
-    # Drop empty components to keep the output clean.
-    if not merged["components"]["schemas"]:
+    # Drop empty sub-sections to keep the output clean.
+    if not merged["components"].get("schemas"):
+        merged["components"].pop("schemas", None)
+    if not merged["components"]:
         del merged["components"]
 
     return merged

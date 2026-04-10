@@ -72,6 +72,8 @@ async def fetch_and_register(service_id: str, labels: dict, container=None):
     prefix = _resolve_prefix(labels, service_name)
     filter_spec = parse_labels(labels)
 
+    logger.info(f"Discovering '{service_name}' — spec: {url}{' prefix: ' + prefix if prefix else ''}")
+
     if filter_spec.mode == FilterMode.ERROR:
         logger.warning(
             f"Service '{service_name}' ha sia filter che exclude — "

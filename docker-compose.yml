@@ -17,6 +17,7 @@ services:
       - GATEWAY_ADMIN_SECRET=${ADMIN_SECRET}
       - GATEWAY_DOCS_DEFAULT=/openapi.json
       - GATEWAY_CONFIG_PATH=/config/public-services.json
+      - GATEWAY_DOCKER_NETWORKS=${DOCKER_NETWORKS:-gateway_net}
       - GATEWAY_LOG_LEVEL=${LOG_LEVEL:-INFO}
     volumes:
       - ./config:/config
