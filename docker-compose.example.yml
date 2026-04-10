@@ -1,0 +1,102 @@
+version: "3.9"
+
+# Example: one public gateway + two sample services.
+#
+# Start with:
+#   ADMIN_SECRET=secret AUTH_REQUIRED=false docker compose -f docker-compose.example.yml up
+#
+# Then visit:
+#   http://localhost:8000/docs          Swagger UI (merged spec)
+#   http://localhost:8000/openapi.json  Raw merged OpenAPI JSON
+#   http://localhost:8000/_gateway/status  -H "X-Gateway-Admin-Secret: secret"
+
+services:
+
+  # ── Gateway ────────────────────────────────────────────────────────────────
+  gateway:
+    image: ghcr.io/sirmmo/openapi-gateway:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - GATEWAY_NAMESPACE=public
+      - GATEWAY_AUTH_REQUIRED=${AUTH_REQUIRED:-true}
+      - GATEWAY_AUTH_JWKS_URL=${JWKS_URL}
+      - GATEWAY_AUTH_MODE=${AUTH_MODE:-validate}
+      - GATEWAY_ADMIN_SECRET=${ADMIN_SECRET}
+      - GATEWAY_LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - gateway_net
+    # Prevent the gateway from discovering itself.
+    labels:
+      gateway.public.enable: "false"
+    depends_on:
+      - petstore
+      - httpbin
+
+  # ── Sample service 1: Swagger Petstore (OpenAPI 3.0) ───────────────────────
+  #
+  # Demonstrates:
+  #   • namespace-scoped enable            gateway.public.enable
+  #   • non-default spec path              gateway.public.docs
+  #   • path prefix                        gateway.public.prefix
+  #   • per-service auth override          gateway.public.auth.required
+  #   • tag-based allowlist filter         gateway.public.filter.tags
+  petstore:
+    image: swaggerapi/petstore3:unstable
+    networks:
+      - gateway_net
+    labels:
+      # Register on the public gateway only.
+      gateway.public.enable: "true"
+
+      # The petstore spec lives at a non-default path.
+      gateway.public.docs: "/api/v3/openapi.json"
+
+      # Expose all routes under /petstore/...
+      gateway.public.prefix: "/petstore"
+
+      # This demo service doesn't need auth.
+      gateway.public.auth.required: "false"
+
+      # Only expose routes tagged "pet" and "store"; hide "user" routes.
+      gateway.public.filter.tags: "pet,store"
+
+      # Shared label (no namespace) — both gateways would use this port.
+      gateway.port: "8080"
+
+  # ── Sample service 2: httpbin ──────────────────────────────────────────────
+  #
+  # Demonstrates:
+  #   • serving on two namespaces with different settings
+  #   • auth override for specific paths
+  #   • denylist (exclude) instead of allowlist (filter)
+  httpbin:
+    image: kennethreitz/httpbin
+    networks:
+      - gateway_net
+    labels:
+      # ── Public gateway ──────────────────────────────────────────────────
+      gateway.public.enable: "true"
+      gateway.public.prefix: "/httpbin"
+      gateway.public.auth.required: "true"
+
+      # Keep /get and /status/* open without a token.
+      gateway.public.auth.override.paths: "GET:/httpbin/get,GET:/httpbin/status/*"
+
+      # Hide internal debugging endpoints.
+      gateway.public.exclude.paths: "/anything/*,/redirect*,/cookies*"
+
+      # ── Internal gateway (if running) ───────────────────────────────────
+      gateway.internal.enable: "true"
+      gateway.internal.prefix: "/httpbin"
+      gateway.internal.auth.required: "false"  # internal traffic is trusted
+
+      # ── Shared defaults ─────────────────────────────────────────────────
+      gateway.port: "80"
+      gateway.docs: "/spec.json"
+
+networks:
+  gateway_net:
+    driver: bridge
