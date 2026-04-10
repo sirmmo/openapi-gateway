@@ -13,6 +13,7 @@ class ServiceEntry:
     service_name: str
     routes: list[dict]
     labels: dict
+    raw_spec: dict = field(default_factory=dict)
     error: bool = False
     error_reason: Optional[str] = None        # "filter_conflict" | "path_conflict"
 
@@ -22,7 +23,8 @@ class RouteRegistry:
         self._store: dict[str, ServiceEntry] = {}
         self._lock = threading.RLock()
 
-    def register(self, service_id: str, routes: list[dict], labels: dict, service_name: str):
+    def register(self, service_id: str, routes: list[dict], labels: dict, service_name: str,
+                 raw_spec: dict = None):
         with self._lock:
             conflicts = self._detect_conflicts(service_id, routes)
             if conflicts:
@@ -47,6 +49,7 @@ class RouteRegistry:
                 service_name=service_name,
                 routes=routes,
                 labels=labels,
+                raw_spec=raw_spec or {},
                 error=False,
             )
 
@@ -103,6 +106,15 @@ class RouteRegistry:
                 }
                 for sid, entry in self._store.items()
             }
+
+    def service_specs(self) -> list[tuple]:
+        """Return (service_name, raw_spec, routes) for every healthy, registered service."""
+        with self._lock:
+            return [
+                (entry.service_name, entry.raw_spec, entry.routes)
+                for entry in self._store.values()
+                if not entry.error and entry.raw_spec
+            ]
 
     def _detect_conflicts(self, service_id: str, routes: list[dict]) -> list[dict]:
         conflicts = []

@@ -7,6 +7,7 @@ from gateway.discovery.docker_watcher import watch_docker_events
 from gateway.discovery.manual_loader import load_manual_config
 from gateway.proxy.forwarder import forward_request
 from gateway.api.admin import router as admin_router
+from gateway.api.docs import router as docs_router
 from gateway.settings import settings
 
 logging.basicConfig(
@@ -24,11 +25,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=f"OpenAPI Gateway{' [' + settings.namespace + ']' if settings.namespace else ''}",
+    openapi_url=None,   # we serve our own merged spec via docs_router
     docs_url=None,
     redoc_url=None,
     lifespan=lifespan,
 )
 app.include_router(admin_router)
+app.include_router(docs_router)   # must be before the catch-all proxy route
 
 
 @app.api_route(

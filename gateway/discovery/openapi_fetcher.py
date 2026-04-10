@@ -86,7 +86,7 @@ async def fetch_and_register(service_id: str, labels: dict, container=None):
                 response.raise_for_status()
                 openapi_spec = response.json()
                 routes = _extract_routes(openapi_spec, base_url, prefix, filter_spec)
-                registry.register(service_id, routes, labels, service_name)
+                registry.register(service_id, routes, labels, service_name, raw_spec=openapi_spec)
                 logger.info(
                     f"Registered {len(routes)} routes for '{service_name}' "
                     f"({'prefix: ' + prefix if prefix else 'no prefix'})"

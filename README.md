@@ -289,6 +289,21 @@ curl -X POST http://localhost:8000/_gateway/reload \
 
 ---
 
+## API docs
+
+The gateway aggregates the OpenAPI specs of all registered services into a single merged document, served at:
+
+| Path | Description |
+|---|---|
+| `/openapi.json` | Merged OpenAPI 3.x spec (all services, prefixes applied) |
+| `/docs` | Swagger UI — interactive exploration and testing |
+| `/redoc` | ReDoc — readable API reference |
+
+The spec path is configurable via `GATEWAY_DOCS_DEFAULT`.  
+Component schemas are namespaced per service (`servicename__SchemaName`) to avoid collisions.
+
+---
+
 ## Admin endpoints
 
 All admin endpoints require the `X-Gateway-Admin-Secret` header.  
