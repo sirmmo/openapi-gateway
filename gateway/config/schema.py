@@ -19,6 +19,7 @@ class ServiceConfig(BaseModel):
     host: Optional[str] = None
     port: int = 8000
     docs_path: str = "/openapi.json"
+    openapi_url: Optional[str] = None   # full URL override for the OpenAPI spec
     prefix: Optional[str] = None
     auth_required: Optional[bool] = None
     auth_override_paths: list[str] = Field(default_factory=list)

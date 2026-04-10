@@ -47,6 +47,8 @@ def _service_to_labels(svc: ServiceConfig) -> dict:
     }
     if svc.host:
         labels["gateway.host"] = svc.host
+    if svc.openapi_url:
+        labels["gateway.openapi_url"] = svc.openapi_url
     if svc.prefix is not None:
         labels["gateway.prefix"] = svc.prefix
     if svc.auth_required is not None:

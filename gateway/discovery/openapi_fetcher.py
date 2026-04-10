@@ -66,8 +66,9 @@ def _extract_routes(spec: dict, base_url: str, prefix: str | None, filter_spec) 
 async def fetch_and_register(service_id: str, labels: dict, container=None):
     service_name = _resolve_service_name(labels, container)
     base_url = _resolve_base_url(labels, container)
-    docs_path = lbl.get_default(labels, "docs", settings.docs_default)
-    url = f"{base_url}{docs_path}"
+    # gateway.openapi_url (set via services.json) overrides the constructed URL,
+    # allowing arbitrary remote or HTTPS spec endpoints.
+    url = lbl.get(labels, "openapi_url") or f"{base_url}{lbl.get_default(labels, 'docs', settings.docs_default)}"
     prefix = _resolve_prefix(labels, service_name)
     filter_spec = parse_labels(labels)
 

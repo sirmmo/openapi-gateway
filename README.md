@@ -275,10 +275,20 @@ Claim names are configurable via `GATEWAY_AUTH_CLAIM_*` environment variables.
         "tags": ["public"],
         "operations": ["getStatus", "listItems"]
       }
+    },
+    {
+      "name": "remote-partner-api",
+      "host": "partner.example.com",
+      "port": 443,
+      "openapi_url": "https://partner.example.com/api/openapi.json",
+      "prefix": "/partner",
+      "auth_required": true
     }
   ]
 }
 ```
+
+`openapi_url` overrides the URL used to fetch the OpenAPI spec. Use it when the spec lives at a different address than the service (HTTPS endpoints, CDN-hosted specs, static files, etc.).
 
 Reload without restart:
 
