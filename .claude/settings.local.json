@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest tests/test_fetcher.py tests/test_registry.py tests/test_forwarder.py -v)",
+      "Bash(pip3 install:*)",
+      "Bash(python3 -m pytest tests/test_fetcher.py tests/test_registry.py tests/test_forwarder.py -v)"
+    ]
+  }
+}
