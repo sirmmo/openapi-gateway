@@ -53,12 +53,24 @@ def _container_networks(container) -> set[str]:
 
 
 def _service_networks(service) -> set[str]:
-    # Swarm services list attached networks under Spec.Networks[].Target
-    return {
-        n["Target"]
-        for n in service.attrs.get("Spec", {}).get("Networks", [])
-        if n.get("Target")
-    }
+    """
+    Return the network NAMES attached to a Swarm service.
+    service.attrs["Spec"]["Networks"][].Target may be a network ID or name;
+    we resolve it to a name via the network inspect so it matches the names
+    returned by _gateway_networks().
+    """
+    client = service.client
+    names = set()
+    for n in service.attrs.get("Spec", {}).get("Networks", []):
+        target = n.get("Target")
+        if not target:
+            continue
+        try:
+            net = client.networks.get(target)
+            names.add(net.name)
+        except Exception:
+            names.add(target)  # keep as-is if inspection fails
+    return names
 
 
 def _on_gateway_network(networks: set[str], gateway_nets: set[str]) -> bool:

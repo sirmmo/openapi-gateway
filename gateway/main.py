@@ -15,9 +15,36 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
 
+logger = logging.getLogger(__name__)
+
+
+def _log_settings():
+    def mask(value):
+        return "***" if value else "not set"
+
+    logger.info("=" * 60)
+    logger.info("OpenAPI Gateway starting")
+    logger.info("=" * 60)
+    logger.info(f"  namespace          : {settings.namespace or '(legacy mode)'}")
+    logger.info(f"  log_level          : {settings.log_level}")
+    logger.info(f"  docs               : {settings.docs_default}")
+    logger.info(f"  config_path        : {settings.config_path}")
+    logger.info(f"  docker_socket      : {settings.docker_socket}")
+    logger.info(f"  docker_networks    : {settings.docker_networks or '(auto-detect)'}")
+    logger.info(f"  auth_required      : {settings.auth_required}")
+    logger.info(f"  auth_mode          : {settings.auth_mode}")
+    logger.info(f"  auth_jwks_url      : {settings.auth_jwks_url or 'not set'}")
+    logger.info(f"  auth_jwks_ttl      : {settings.auth_jwks_ttl_seconds}s")
+    logger.info(f"  auth_claims        : id={settings.auth_claim_id}  email={settings.auth_claim_email}  roles={settings.auth_claim_roles}")
+    logger.info(f"  admin_secret       : {mask(settings.admin_secret)}")
+    logger.info(f"  retry_attempts     : {settings.discovery_retry_attempts}")
+    logger.info(f"  retry_backoff      : {settings.discovery_retry_backoff}s")
+    logger.info("=" * 60)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _log_settings()
     await load_manual_config()
     asyncio.create_task(watch_docker_events())
     yield
