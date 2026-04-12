@@ -8,6 +8,7 @@ from gateway.discovery.manual_loader import load_manual_config
 from gateway.proxy.forwarder import forward_request
 from gateway.api.admin import router as admin_router
 from gateway.api.docs import router as docs_router
+from gateway.auth.api_keys import load_api_keys
 from gateway.settings import settings
 
 logging.basicConfig(
@@ -37,6 +38,9 @@ def _log_settings():
     logger.info(f"  auth_jwks_ttl      : {settings.auth_jwks_ttl_seconds}s")
     logger.info(f"  auth_claims        : id={settings.auth_claim_id}  email={settings.auth_claim_email}  roles={settings.auth_claim_roles}")
     logger.info(f"  admin_secret       : {mask(settings.admin_secret)}")
+    logger.info(f"  api_key_required   : {settings.api_key_required}")
+    logger.info(f"  api_key_header     : {settings.api_key_header}")
+    logger.info(f"  api_keys_path      : {settings.api_keys_path}")
     logger.info(f"  retry_attempts     : {settings.discovery_retry_attempts}")
     logger.info(f"  retry_backoff      : {settings.discovery_retry_backoff}s")
     logger.info("=" * 60)
@@ -45,6 +49,7 @@ def _log_settings():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _log_settings()
+    load_api_keys()
     await load_manual_config()
     asyncio.create_task(watch_docker_events())
     yield

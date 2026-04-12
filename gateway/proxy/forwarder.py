@@ -3,6 +3,7 @@ import httpx
 from fastapi import Request, Response
 from gateway.registry.route_registry import registry
 from gateway.auth.middleware import check_auth, inject_claims_headers
+from gateway.auth.api_keys import check_api_key
 from gateway.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,7 @@ async def forward_request(request: Request, path: str) -> Response:
 
     route, labels, service_name = result
     claims = await check_auth(request, route, labels)
+    tenant = check_api_key(request, route, labels)
 
     headers = {k: v for k, v in request.headers.items() if k.lower() not in _HOP_BY_HOP}
     headers.pop("host", None)
@@ -43,6 +45,13 @@ async def forward_request(request: Request, path: str) -> Response:
     if settings.auth_mode == "validate" and claims is not None:
         headers.pop("authorization", None)
         headers = inject_claims_headers(headers, claims)
+
+    if tenant is not None:
+        # Strip the raw key — upstream never sees the secret
+        headers.pop(settings.api_key_header.lower(), None)
+        headers["X-Tenant-Id"] = tenant["tenant_id"]
+        if tenant.get("tenant_name"):
+            headers["X-Tenant-Name"] = tenant["tenant_name"]
 
     target_url = f"{route['base_url']}{upstream_path}"
     body = await request.body()

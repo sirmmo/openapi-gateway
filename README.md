@@ -18,6 +18,7 @@ A lightweight, self-configuring API gateway that discovers services via Docker e
 - [Namespaces](#namespaces)
 - [Label reference](#label-reference)
 - [Authentication modes](#authentication-modes)
+- [API keys (tenancy)](#api-keys-tenancy)
 - [External services](#external-services-servicesjson)
 - [Admin endpoints](#admin-endpoints)
 - [Error states](#error-states)
@@ -202,6 +203,12 @@ gateway.{ns}.exclude.operations: "deleteEverything"
 | `gateway.{ns}.auth.required` | inherits global | Override auth requirement for this service |
 | `gateway.{ns}.auth.override.paths` | — | Paths exempt from auth |
 
+### API key (tenancy)
+
+| Label | Default | Description |
+|---|---|---|
+| `gateway.{ns}.api_key.required` | inherits global | Override API key requirement for this service |
+
 **`auth.override.paths` format:**
 
 ```yaml
@@ -243,6 +250,63 @@ X-User-Roles:  <comma-separated roles>
 ```
 
 Claim names are configurable via `GATEWAY_AUTH_CLAIM_*` environment variables.
+
+---
+
+## API keys (tenancy)
+
+API keys provide **tenancy-level identification** on top of JWT authentication — they are independent and additive. A request may carry both a JWT (user identity) and an API key (tenant identity), either alone, or neither.
+
+The gateway validates the key, strips it from the forwarded request, and injects tenant metadata as headers:
+
+```
+X-Tenant-Id:    acme
+X-Tenant-Name:  ACME Corp    # omitted when not set on the key entry
+```
+
+### Key file (`api_keys.json`)
+
+Keys are loaded from a JSON file at startup (configurable via `GATEWAY_API_KEYS_PATH`):
+
+```json
+[
+  {"key": "sk-acme-abc123", "tenant_id": "acme", "tenant_name": "ACME Corp"},
+  {"key": "sk-beta-xyz789", "tenant_id": "beta"}
+]
+```
+
+| Field | Required | Description |
+|---|---|---|
+| `key` | yes | The secret value sent by the caller |
+| `tenant_id` | yes | Injected as `X-Tenant-Id` upstream |
+| `tenant_name` | no | Injected as `X-Tenant-Name` upstream when present |
+
+### Behaviour
+
+| Condition | Result |
+|---|---|
+| `GATEWAY_API_KEY_REQUIRED=false` (default) and no key sent | Request passes through; no tenant headers injected |
+| `GATEWAY_API_KEY_REQUIRED=false` and a valid key sent | Tenant headers injected; raw key header stripped |
+| `GATEWAY_API_KEY_REQUIRED=false` and an invalid key sent | `401 Invalid API key` |
+| `GATEWAY_API_KEY_REQUIRED=true` and no key sent | `401 Missing X-API-Key header` |
+| `GATEWAY_API_KEY_REQUIRED=true` and a valid key sent | Tenant headers injected; raw key header stripped |
+
+The key requirement can be overridden per service with `gateway.{ns}.api_key.required: "true"/"false"`.
+
+### Header name
+
+The expected header name defaults to `X-API-Key` and is configurable via `GATEWAY_API_KEY_HEADER`.
+
+### Reload without restart
+
+```bash
+curl -X POST http://localhost:8000/_gateway/api-keys/reload \
+  -H "X-Gateway-Admin-Secret: your-secret"
+```
+
+### Merged spec
+
+When `GATEWAY_API_KEY_REQUIRED=true`, the gateway adds an `apiKey` security scheme to the merged `/openapi.json` and marks each operation that requires the key, allowing Swagger UI to send the header during interactive testing.
 
 ---
 
@@ -325,6 +389,7 @@ If `GATEWAY_ADMIN_SECRET` is not set, all admin endpoints return `503`.
 | `GET` | `/_gateway/routes` | All registered routes |
 | `POST` | `/_gateway/reload` | Reload `services.json` |
 | `POST` | `/_gateway/rediscover` | Re-scan Docker containers and Swarm services |
+| `POST` | `/_gateway/api-keys/reload` | Reload `api_keys.json` without restart |
 
 <details>
 <summary>Example status response</summary>
@@ -387,10 +452,13 @@ Resolve the configuration error and restart the affected container — the gatew
 | `GATEWAY_AUTH_CLAIM_ID` | `sub` | JWT claim → `X-User-Id` |
 | `GATEWAY_AUTH_CLAIM_EMAIL` | `email` | JWT claim → `X-User-Email` |
 | `GATEWAY_AUTH_CLAIM_ROLES` | `roles` | JWT claim → `X-User-Roles` |
+| `GATEWAY_API_KEY_REQUIRED` | `false` | Globally require an API key on all requests |
+| `GATEWAY_API_KEY_HEADER` | `X-API-Key` | Header name the caller must send the key in |
+| `GATEWAY_API_KEYS_PATH` | `/config/api_keys.json` | Path to the API key file |
 | `GATEWAY_ADMIN_SECRET` | — | Required to access `/_gateway/*` endpoints |
 | `GATEWAY_DOCS_DEFAULT` | `/openapi.json` | Default OpenAPI schema path |
 | `GATEWAY_CONFIG_PATH` | `/config/services.json` | Path to manual service registry |
-| `GATEWAY_DOCKER_SOCKET` | `unix://var/run/docker.sock` | Docker socket path |
+| `GATEWAY_DOCKER_SOCKET` | `unix:///var/run/docker.sock` | Docker socket path |
 | `GATEWAY_DOCKER_NETWORKS` | auto-detected | Comma-separated network names to watch. If unset, detected from the gateway container's own networks. |
 | `GATEWAY_DISCOVERY_RETRY_ATTEMPTS` | `5` | OpenAPI fetch retry count |
 | `GATEWAY_DISCOVERY_RETRY_BACKOFF` | `2.0` | Exponential backoff base (seconds) |
@@ -446,7 +514,8 @@ Resolve the configuration error and restart the affected container — the gatew
 | `openapi_fetcher` | Fetches `/openapi.json`, applies filters, registers routes |
 | `route_registry` | Thread-safe in-memory store; resolves incoming paths, detects conflicts |
 | `forwarder` | Proxies requests via `httpx`, strips prefix, injects headers |
-| `auth/middleware` | Validates JWT via JWKS; injects claims in `validate` mode |
+| `auth/middleware` | Validates JWT via JWKS; injects `X-User-*` claims in `validate` mode |
+| `auth/api_keys` | Validates API keys; injects `X-Tenant-Id` / `X-Tenant-Name` headers |
 | `manual_loader` | Loads `services.json`, normalizes to the same label format as Docker labels |
 | `admin` | `/_gateway/*` endpoints for observability and hot-reload |
 

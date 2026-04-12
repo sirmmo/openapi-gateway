@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     auth_claim_email: str = "email"
     auth_claim_roles: str = "roles"
 
+    # API keys (tenancy identification)
+    api_key_required: bool = False
+    api_key_header: str = "X-API-Key"
+    api_keys_path: str = "/config/api_keys.json"
+
     # Admin
     admin_secret: Optional[str] = None
 

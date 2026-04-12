@@ -2,6 +2,7 @@ from fastapi import APIRouter, Request, HTTPException
 from gateway.registry.route_registry import registry
 from gateway.discovery.manual_loader import reload_manual_config
 from gateway.discovery.docker_watcher import rediscover
+from gateway.auth.api_keys import load_api_keys, count as api_key_count
 from gateway.settings import settings
 
 router = APIRouter(prefix="/_gateway")
@@ -45,6 +46,13 @@ async def rediscover_docker(request: Request):
     _verify_admin(request)
     count = await rediscover()
     return {"ok": True, "discovered": count}
+
+
+@router.post("/api-keys/reload")
+async def reload_api_keys(request: Request):
+    _verify_admin(request)
+    n = load_api_keys()
+    return {"ok": True, "loaded": n}
 
 
 @router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"])

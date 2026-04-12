@@ -6,6 +6,7 @@ from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 
 from gateway.registry.route_registry import registry
 from gateway.auth.middleware import _requires_auth
+from gateway.auth.api_keys import _requires_api_key
 from gateway.settings import settings
 
 router = APIRouter()
@@ -16,6 +17,12 @@ _BEARER_SCHEME = {
     "type": "http",
     "scheme": "bearer",
     "bearerFormat": "JWT",
+}
+
+_API_KEY_SCHEME = {
+    "type": "apiKey",
+    "in": "header",
+    "name": "X-API-Key",   # updated dynamically from settings at build time
 }
 
 
@@ -40,6 +47,7 @@ def build_merged_spec() -> dict:
     ns = settings.namespace
     title = f"OpenAPI Gateway{' [' + ns + ']' if ns else ''}"
     auth_enabled = settings.auth_required
+    api_key_enabled = settings.api_key_required
 
     merged: dict = {
         "openapi": "3.1.0",
@@ -48,8 +56,16 @@ def build_merged_spec() -> dict:
         "components": {"schemas": {}},
     }
 
+    security_schemes: dict = {}
     if auth_enabled:
-        merged["components"]["securitySchemes"] = {"bearerAuth": _BEARER_SCHEME}
+        security_schemes["bearerAuth"] = _BEARER_SCHEME
+    if api_key_enabled:
+        security_schemes["apiKeyAuth"] = {
+            **_API_KEY_SCHEME,
+            "name": settings.api_key_header,  # reflect actual configured header name
+        }
+    if security_schemes:
+        merged["components"]["securitySchemes"] = security_schemes
 
     for service_name, raw_spec, routes, labels in registry.service_specs():
         schema_prefix = _safe_prefix(service_name)
@@ -79,13 +95,18 @@ def build_merged_spec() -> dict:
 
             operation = path_item[method]
 
-            # Annotate each operation with the actual security requirement so
-            # Swagger UI shows the lock icon and allows token entry for testing.
-            if auth_enabled:
-                if _requires_auth(route, labels):
-                    operation["security"] = [{"bearerAuth": []}]
-                else:
-                    operation["security"] = []  # explicitly open (override path)
+            # Build per-operation security requirement from actual gateway rules.
+            # JWT (bearerAuth) and API key (apiKeyAuth) are independent — both may
+            # be required simultaneously (AND semantics within one requirement object).
+            sec_req: dict = {}
+            if auth_enabled and _requires_auth(route, labels):
+                sec_req["bearerAuth"] = []
+            if api_key_enabled and _requires_api_key(route, labels):
+                sec_req["apiKeyAuth"] = []
+
+            if auth_enabled or api_key_enabled:
+                # Empty dict → explicitly public operation; non-empty → locked.
+                operation["security"] = [sec_req] if sec_req else []
 
             merged["paths"][exposed_path][method] = operation
 
